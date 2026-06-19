@@ -1,7 +1,7 @@
 # SL Weather
 
 A script to either serve up or generate an HTML page showing info from an ambientweather API.
-Originally written for Spruce Lake Retreat.
+Originally written for [Spruce Lake Retreat](https://www.sprucelake.org/).
 
 ## Installation
 
