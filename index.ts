@@ -2,7 +2,8 @@
 import 'dotenv/config';
 import render from './render.ts';
 import type { EnvValues } from './types.ts';
-import { createWriteStream } from 'fs';
+import { createWriteStream } from 'node:fs';
+import { createServer } from 'node:http';
 
 type Config =
   | {
@@ -71,10 +72,38 @@ function getEnvValues(): EnvValues {
 }
 
 const conf = getConf();
-const env = getEnvValues();
+const env: Readonly<EnvValues> = getEnvValues();
 
 if (conf.mode === 'serve') {
   // create http server, call render in it
+  const server = createServer(async (req, res) => {
+    const url = new URL(`http://localhost:${conf.port}${req.url ?? ''}`);
+    if (req.method !== 'GET') {
+      res.writeHead(405, { 'content-type': 'text/plain' });
+      res.end('Only GET requests are allowed');
+      return;
+    }
+
+    if (url.pathname !== '/') {
+      console.log('Page not found', url.pathname);
+      res.writeHead(404, { 'content-type': 'text/plain' });
+      res.end('404 Not Found');
+      return;
+    }
+
+    try {
+      const body = await render(env);
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end(body);
+    } catch (e) {
+      console.error(e);
+      res.writeHead(500, { 'content-type': 'text/plain' });
+      res.end('An unexpected error occurred.');
+    }
+  });
+
+  server.listen(conf.port);
+  console.log(`Listening on port ${conf.port}...`);
 } else if (conf.mode === 'emit') {
   // call render and send it to conf.outFile
   const html = await render(env);
