@@ -93,7 +93,7 @@ if (conf.mode === 'serve') {
 
     try {
       const body = await render(env);
-      res.writeHead(200, { 'content-type': 'text/html' });
+      res.writeHead(200, { 'content-type': 'text/html; charset=UTF-8' });
       res.end(body);
     } catch (e) {
       console.error(e);
