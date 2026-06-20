@@ -22,3 +22,5 @@ node ./index.ts serve -p 3000
 node ./index.ts emit
 node ./index.ts emit -o ./outFile.html
 ```
+
+The script reads API_KEY, APPLICATION_KEY, and DEVICE_ID from environment variables or a `.env` file.

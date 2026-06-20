@@ -1,5 +1,8 @@
 #! /usr/bin/env node
 import 'dotenv/config';
+import render from './render.ts';
+import type { EnvValues } from './types.ts';
+import { createWriteStream } from 'fs';
 
 type Config =
   | {
@@ -17,8 +20,8 @@ function isValidMode(maybeMode: string): maybeMode is Config['mode'] {
   return maybeMode === 'serve' || maybeMode === 'emit';
 }
 
-function assertNever(mode: never) {
-  throw Error(`Unchecked mode: ${mode}`);
+function assertNever(mode: never): never {
+  throw Error(`Unexpected value: ${JSON.stringify(mode)}`);
 }
 
 function parseArgs(args = process.argv): Config {
@@ -40,24 +43,52 @@ function parseArgs(args = process.argv): Config {
     return { mode, port: port ?? DEFAULT_PORT };
   }
 
-  assertNever(mode);
+  return assertNever(mode);
 }
 
-let conf;
-try {
-  conf = parseArgs();
-} catch (e) {
-  console.debug(e);
-  console.log('Usage:');
-  console.log('  node ./index.ts serve');
-  console.log('  node ./index.ts emit -o myFile.html');
-  process.exit(1);
+function getConf() {
+  try {
+    return parseArgs();
+  } catch (e) {
+    console.debug(e);
+    console.log('Usage:');
+    console.log('  node ./index.ts serve');
+    console.log('  node ./index.ts emit -o myFile.html');
+    process.exit(1);
+  }
 }
+
+function getEnvValues(): EnvValues {
+  const returnVal = {} as EnvValues;
+  for (const key of ['API_KEY', 'APPLICATION_KEY', 'DEVICE_ID'] as const) {
+    const val = process.env[key];
+    if (val == null) {
+      throw Error(`Missing required environment value "${key}"`);
+    }
+    returnVal[key] = val;
+  }
+  return returnVal;
+}
+
+const conf = getConf();
+const env = getEnvValues();
 
 if (conf.mode === 'serve') {
   // create http server, call render in it
 } else if (conf.mode === 'emit') {
   // call render and send it to conf.outFile
+  const html = await render(env);
+  const stream =
+    typeof conf.outFile === 'string'
+      ? createWriteStream(conf.outFile)
+      : conf.outFile;
+
+  stream.write(html);
+
+  if (!('fd' in stream) || stream.fd !== 1) {
+    // Don't call .end() on stdout
+    stream.end();
+  }
 } else {
-  assertNever(conf.mode);
+  assertNever(conf);
 }
